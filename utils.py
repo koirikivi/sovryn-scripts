@@ -6,7 +6,7 @@ import logging
 import os
 import sys
 from time import sleep
-from typing import Dict, Any, Union
+from typing import Dict, Any, List, Union
 
 from eth_typing import AnyAddress
 from eth_utils import to_checksum_address, to_hex
@@ -56,7 +56,7 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def load_abi(name: str) -> Dict[str, Any]:
+def load_abi(name: str) -> List[Dict[str, Any]]:
     abi_path = os.path.join(ABI_DIR, f'{name}.json')
     assert os.path.abspath(abi_path).startswith(os.path.abspath(ABI_DIR))
     with open(abi_path) as f:
