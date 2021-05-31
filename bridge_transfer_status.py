@@ -1,16 +1,14 @@
 """
 Show status all transfers on a token bridge
 """
-from argparse import ArgumentParser
 import csv
-from dataclasses import dataclass, fields, asdict
-from typing import List, Tuple
+from argparse import ArgumentParser
+from dataclasses import asdict, dataclass, fields
+from typing import List
 
 from eth_utils import to_hex
-from web3.datastructures import AttributeDict
 
-from utils import get_web3, get_events, load_abi, to_address, enable_logging
-
+from utils import enable_logging, get_events, get_web3, load_abi, to_address
 
 BRIDGES = {
     'rsk_eth_mainnet': {

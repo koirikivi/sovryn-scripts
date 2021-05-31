@@ -1,15 +1,12 @@
 import argparse
-import sys
 import warnings
 from typing import Optional
 
 import pandas as pd
+from eth_abi import decode_abi
+from eth_utils import is_hexstr, to_bytes, to_hex
 
-from eth_utils import to_bytes, to_hex, is_hexstr
-from eth_abi import decode_abi, decode_single
-
-from utils import get_web3, get_events, load_abi, to_address, enable_logging
-
+from utils import load_abi
 
 FEDERATION_ABI = load_abi('token_bridge/Federation')
 

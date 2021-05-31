@@ -1,15 +1,15 @@
 """Various web3"""
-from datetime import datetime, timezone
 import functools
 import json
 import logging
 import os
 import sys
+from datetime import datetime, timezone
 from time import sleep
-from typing import Dict, Any, List, Union
+from typing import Any, Dict, List, Union
 
 from eth_typing import AnyAddress
-from eth_utils import to_checksum_address, to_hex
+from eth_utils import to_checksum_address
 from web3 import Web3
 from web3.contract import Contract, ContractEvent
 
@@ -27,7 +27,7 @@ RPC_URLS = {
 }
 
 
-def get_web3(chain_name: str):
+def get_web3(chain_name: str) -> Web3:
     try:
         rpc_url = RPC_URLS[chain_name]
     except KeyError:
@@ -82,11 +82,11 @@ def get_erc20_contract(*, token_address: Union[str, AnyAddress], web3: Web3) -> 
 
 
 def get_events(
-        *,
-        event: ContractEvent,
-        from_block: int,
-        to_block: int,
-        batch_size: int = 100
+    *,
+    event: ContractEvent,
+    from_block: int,
+    to_block: int,
+    batch_size: int = 100
 ):
     """Load events in batches"""
     if to_block < from_block:
@@ -133,16 +133,11 @@ def retryable(*, max_attempts: int = 10):
                         attempt + 1,
                         max_attempts,
                         e,
-                        )
+                    )
                     exponential_sleep(attempt)
                     attempt += 1
         return wrapped
     return decorator
-
-
-class UserDataNotAddress(Exception):
-    def __init__(self, userdata: bytes):
-        super().__init__(f'userdata {userdata!r} cannot be decoded to an address')
 
 
 @functools.lru_cache()
