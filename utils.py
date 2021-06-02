@@ -17,13 +17,14 @@ THIS_DIR = os.path.dirname(__file__)
 ABI_DIR = os.path.join(THIS_DIR, 'abi')
 logger = logging.getLogger(__name__)
 
+INFURA_API_KEY = os.environ.get('INFURA_API_KEY', 'INFURA_API_KEY_NOT_SET')
 RPC_URLS = {
     'rsk_mainnet': 'https://mainnet2.sovryn.app/rpc',
     'bsc_mainnet': 'https://bsc-dataseed.binance.org/',
     'rsk_testnet': 'https://testnet2.sovryn.app/rpc',
     'bsc_testnet': 'https://data-seed-prebsc-1-s1.binance.org:8545/',
-    'eth_mainnet': 'https://mainnet.infura.io/v3/YOUR_API_KEY',  # From Bridge-SC
-    'eth_testnet_ropsten': 'https://ropsten.infura.io/v3/YOUR_API_KEY',  # From Bridge-SC
+    'eth_mainnet': f'https://mainnet.infura.io/v3/{INFURA_API_KEY}',
+    'eth_testnet_ropsten': f'https://ropsten.infura.io/v3/{INFURA_API_KEY}',
 }
 
 
@@ -33,6 +34,8 @@ def get_web3(chain_name: str) -> Web3:
     except KeyError:
         valid_chains = ', '.join(repr(k) for k in RPC_URLS.keys())
         raise LookupError(f'Invalid chain name: {chain_name!r}. Valid options: {valid_chains}')
+    if 'INFURA_API_KEY_NOT_SET' in rpc_url:
+        raise RuntimeError('please provide the enviroment var INFURA_API_KEY')
     return Web3(Web3.HTTPProvider(rpc_url))
 
 
