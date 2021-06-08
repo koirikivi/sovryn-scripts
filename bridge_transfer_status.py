@@ -4,7 +4,7 @@ Show status all transfers on a token bridge
 import csv
 from argparse import ArgumentParser
 from dataclasses import asdict, dataclass, fields
-from typing import List
+from typing import List, Optional
 
 from eth_utils import to_hex
 
@@ -76,6 +76,8 @@ def main():
                         ])
     parser.add_argument('-o', '--outfile', help='Path of CSV file to write all transfers to', required=False)
     parser.add_argument('-v', '--verbose', action='store_true', default=False)
+    parser.add_argument('--rsk-start-block', type=int, default=None)
+    parser.add_argument('--other-start-block', type=int, default=None)
     args = parser.parse_args()
 
     bridge_config = BRIDGES[args.bridge]
@@ -88,10 +90,10 @@ def main():
     print(f"CSV Output file: {args.outfile}")
 
     print("Transfers from RSK:")
-    rsk_transfers = fetch_state(bridge_config['rsk'], bridge_config['other'])
+    rsk_transfers = fetch_state(bridge_config['rsk'], bridge_config['other'], bridge_start_block=args.rsk_start_block)
 
     print("Transfers from the other chain:")
-    other_transfers = fetch_state(bridge_config['other'], bridge_config['rsk'])
+    other_transfers = fetch_state(bridge_config['other'], bridge_config['rsk'], bridge_start_block=args.other_start_block)
 
     print("Unprocessed transfers from RSK:")
     show_unprocessed_transfers(rsk_transfers)
@@ -111,9 +113,10 @@ def main():
                     writer.writerow(asdict(transfer))
 
 
-def fetch_state(main_bridge_config, side_bridge_config) -> List[Transfer]:
+def fetch_state(main_bridge_config, side_bridge_config, *, bridge_start_block: Optional[int] = None) -> List[Transfer]:
     bridge_address = main_bridge_config['bridge_address']
-    bridge_start_block = main_bridge_config['bridge_start_block']
+    if not bridge_start_block:
+        bridge_start_block = main_bridge_config['bridge_start_block']
     federation_address = side_bridge_config['federation_address']
     main_chain = main_bridge_config['chain']
     side_chain = side_bridge_config['chain']
