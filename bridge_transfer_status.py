@@ -88,6 +88,10 @@ class Transfer:
     event_block_hash: str
     event_transaction_hash: str
     event_log_index: int
+    executed_transaction_hash: str
+    executed_block_hash: str
+    executed_block_number: int
+    executed_log_index: int
     #vote_transaction_args: Tuple
     #cross_event: AttributeDict
 
@@ -113,10 +117,16 @@ def main():
     print(f"CSV Output file: {args.outfile}")
 
     print("Transfers from RSK:")
-    rsk_transfers = fetch_state(bridge_config['rsk'], bridge_config['other'], bridge_start_block=args.rsk_start_block)
+    rsk_transfers = fetch_state(bridge_config['rsk'],
+                                bridge_config['other'],
+                                bridge_start_block=args.rsk_start_block,
+                                federation_start_block=args.other_start_block)
 
     print("Transfers from the other chain:")
-    other_transfers = fetch_state(bridge_config['other'], bridge_config['rsk'], bridge_start_block=args.other_start_block)
+    other_transfers = fetch_state(bridge_config['other'],
+                                  bridge_config['rsk'],
+                                  bridge_start_block=args.other_start_block,
+                                  federation_start_block=args.rsk_start_block)
 
     print("Unprocessed transfers from RSK:")
     show_unprocessed_transfers(rsk_transfers)
@@ -136,10 +146,14 @@ def main():
                     writer.writerow(asdict(transfer))
 
 
-def fetch_state(main_bridge_config, side_bridge_config, *, bridge_start_block: Optional[int] = None) -> List[Transfer]:
+def fetch_state(main_bridge_config, side_bridge_config, *,
+                bridge_start_block: Optional[int] = None,
+                federation_start_block: Optional[int] = None) -> List[Transfer]:
     bridge_address = main_bridge_config['bridge_address']
     if not bridge_start_block:
         bridge_start_block = main_bridge_config['bridge_start_block']
+    if not federation_start_block:
+        federation_start_block = side_bridge_config['bridge_start_block']
     federation_address = side_bridge_config['federation_address']
     main_chain = main_bridge_config['chain']
     side_chain = side_bridge_config['chain']
@@ -156,6 +170,7 @@ def fetch_state(main_bridge_config, side_bridge_config, *, bridge_start_block: O
         address=to_address(federation_address),
         abi=FEDERATION_ABI,
     )
+    federation_end_block = side_web3.eth.get_block_number()
 
     print(f'main: {main_chain}, side: {side_chain}, from: {bridge_start_block}, to: {bridge_end_block}')
     print('getting Cross events')
@@ -164,8 +179,22 @@ def fetch_state(main_bridge_config, side_bridge_config, *, bridge_start_block: O
         from_block=bridge_start_block,
         to_block=bridge_end_block,
     )
-
     print(f'found {len(cross_events)} Cross events')
+
+    print('getting Executed events')
+    executed_events = get_events(
+        event=federation_contract.events.Executed,
+        from_block=federation_start_block,
+        to_block=federation_end_block,
+    )
+    print(f'found {len(executed_events)} Executed events')
+    executed_event_by_transaction_id = {
+        to_hex(e.args.transactionId): e
+        for e in executed_events
+    }
+
+
+    print('processing transfers')
     transfers = []
     for event in cross_events:
         args = event.args
@@ -188,6 +217,8 @@ def fetch_state(main_bridge_config, side_bridge_config, *, bridge_start_block: O
         print('num_votes', num_votes)
         was_processed = federation_contract.functions.transactionWasProcessed(transaction_id).call()
         print('was_processed', was_processed)
+        executed_event = executed_event_by_transaction_id.get(transaction_id)
+        print('related Executed event', executed_event)
         transfer = Transfer(
             from_chain=main_chain,
             to_chain=side_chain,
@@ -203,6 +234,10 @@ def fetch_state(main_bridge_config, side_bridge_config, *, bridge_start_block: O
             event_block_hash=event.blockHash.hex(),
             event_transaction_hash=event.transactionHash.hex(),
             event_log_index=event.logIndex,
+            executed_transaction_hash=executed_event.transactionHash.hex() if executed_event else None,
+            executed_block_hash=executed_event.blockHash.hex() if executed_event else None,
+            executed_block_number=executed_event.blockNumber if executed_event else None,
+            executed_log_index=executed_event.logIndex if executed_event else None,
             #vote_transaction_args=vote_transaction_args,
             #cross_event=event,
         )
