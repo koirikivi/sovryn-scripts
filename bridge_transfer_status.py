@@ -25,6 +25,20 @@ BRIDGES = {
             'chain': 'eth_mainnet',
         }
     },
+    'rsk_bsc_mainnet': {
+        'rsk': {
+            'bridge_address': '0x971b97c8cc82e7d27bc467c2dc3f219c6ee2e350',
+            'federation_address': '0xc4b5178cc086e764568adfb2daccbb0d973e8132',
+            'bridge_start_block': 3399221,
+            'chain': 'rsk_mainnet',
+        },
+        'other': {
+            'bridge_address': '0xdfc7127593c8af1a17146893f10e08528f4c2aa7',
+            'federation_address': '0xfc321356bb2ca3d68fafe9515c24c9b23b63a6a6',
+            'bridge_start_block': 7917126,
+            'chain': 'bsc_mainnet',
+        }
+    },
     'rsk_eth_testnet': {
         'rsk': {
             'bridge_address': '0xc0e7a7fff4aba5e7286d5d67dd016b719dcc9156',
@@ -38,7 +52,21 @@ BRIDGES = {
             'bridge_start_block': 10222073,
             'chain': 'eth_testnet_ropsten',
         }
-    }
+    },
+    'rsk_bsc_testnet': {
+        'rsk': {
+            'bridge_address': '0x2b2bcad081fa773dc655361d1bb30577caa556f8',
+            'federation_address': '0x92f791b72842f479888aefba975eff2ed74700b7',
+            'bridge_start_block': 1884421,
+            'chain': 'rsk_testnet',
+        },
+        'other': {
+            'bridge_address': '0x862e8aff917319594cc7faaae5350d21196c086f',
+            'federation_address': '0x2b456e230225c4670fbf10b9da506c019a24cac7',
+            'bridge_start_block': 9290364,
+            'chain': 'bsc_testnet',
+        }
+    },
 }
 BRIDGE_ABI = load_abi('token_bridge/Bridge')
 FEDERATION_ABI = load_abi('token_bridge/Federation')
@@ -68,12 +96,7 @@ def main():
     parser = ArgumentParser(description="Show status of Cross events of bridge")
     parser.add_argument('bridge',
                         help='which bridge to use?',
-                        choices=[
-                            'rsk_eth_mainnet',
-                            #'rsk_bsc_mainnet',  # TODO
-                            'rsk_eth_testnet',
-                            #'rsk_bsc_testnet'  # TODO
-                        ])
+                        choices=list(BRIDGES.keys())),
     parser.add_argument('-o', '--outfile', help='Path of CSV file to write all transfers to', required=False)
     parser.add_argument('-v', '--verbose', action='store_true', default=False)
     parser.add_argument('--rsk-start-block', type=int, default=None)
