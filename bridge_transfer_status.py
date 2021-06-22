@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 from dataclasses import asdict, dataclass, fields
 from typing import List, Optional
 
+from web3.logs import IGNORE, DISCARD
 from eth_utils import to_hex
 
 from utils import enable_logging, get_events, get_web3, load_abi, to_address
@@ -92,6 +93,8 @@ class Transfer:
     executed_block_hash: str
     executed_block_number: int
     executed_log_index: int
+    has_error_token_receiver_events: bool
+    error_data: str
     #vote_transaction_args: Tuple
     #cross_event: AttributeDict
 
@@ -154,6 +157,7 @@ def fetch_state(main_bridge_config, side_bridge_config, *,
         bridge_start_block = main_bridge_config['bridge_start_block']
     if not federation_start_block:
         federation_start_block = side_bridge_config['bridge_start_block']
+    side_bridge_address = side_bridge_config['bridge_address']
     federation_address = side_bridge_config['federation_address']
     main_chain = main_bridge_config['chain']
     side_chain = side_bridge_config['chain']
@@ -171,6 +175,10 @@ def fetch_state(main_bridge_config, side_bridge_config, *,
         abi=FEDERATION_ABI,
     )
     federation_end_block = side_web3.eth.get_block_number()
+    side_bridge_contract = side_web3.eth.contract(
+        address=to_address(side_bridge_address),
+        abi=BRIDGE_ABI,
+    )
 
     print(f'main: {main_chain}, side: {side_chain}, from: {bridge_start_block}, to: {bridge_end_block}')
     print('getting Cross events')
@@ -192,7 +200,6 @@ def fetch_state(main_bridge_config, side_bridge_config, *,
         to_hex(e.args.transactionId): e
         for e in executed_events
     }
-
 
     print('processing transfers')
     transfers = []
@@ -219,6 +226,15 @@ def fetch_state(main_bridge_config, side_bridge_config, *,
         print('was_processed', was_processed)
         executed_event = executed_event_by_transaction_id.get(transaction_id)
         print('related Executed event', executed_event)
+        executed_transaction_hash = executed_event.transactionHash.hex() if executed_event else None
+        error_token_receiver_events = tuple()
+        if executed_transaction_hash:
+            receipt = side_web3.eth.get_transaction_receipt(executed_transaction_hash)
+            error_token_receiver_events = side_bridge_contract.events.ErrorTokenReceiver().processReceipt(
+                receipt,
+                errors=DISCARD,  # TODO: is this right?
+            )
+
         transfer = Transfer(
             from_chain=main_chain,
             to_chain=side_chain,
@@ -234,10 +250,12 @@ def fetch_state(main_bridge_config, side_bridge_config, *,
             event_block_hash=event.blockHash.hex(),
             event_transaction_hash=event.transactionHash.hex(),
             event_log_index=event.logIndex,
-            executed_transaction_hash=executed_event.transactionHash.hex() if executed_event else None,
+            executed_transaction_hash=executed_transaction_hash,
             executed_block_hash=executed_event.blockHash.hex() if executed_event else None,
             executed_block_number=executed_event.blockNumber if executed_event else None,
             executed_log_index=executed_event.logIndex if executed_event else None,
+            has_error_token_receiver_events=bool(error_token_receiver_events),
+            error_data=to_hex(error_token_receiver_events[0].args._errorData) if error_token_receiver_events else '0x',
             #vote_transaction_args=vote_transaction_args,
             #cross_event=event,
         )
