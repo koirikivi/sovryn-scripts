@@ -181,7 +181,7 @@ def main():
         return
 
     print("Voting for transaction.")
-    vote_tx_hash = federation_contract.functions.voteTransaction(*vote_transaction_args).sendTransaction()
+    vote_tx_hash = federation_contract.functions.voteTransaction(*vote_transaction_args).transact()
     vote_tx_hash = to_hex(vote_tx_hash)
     print("Vote tx:", vote_tx_hash)
     print("Waiting for receipt")
