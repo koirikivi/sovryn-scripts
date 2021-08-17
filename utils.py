@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 INFURA_API_KEY = os.environ.get('INFURA_API_KEY', 'INFURA_API_KEY_NOT_SET')
 RPC_URLS = {
     'rsk_mainnet': 'https://mainnet2.sovryn.app/rpc',
+    'rsk_mainnet_iov': 'https://public-node.rsk.co',
     'bsc_mainnet': 'https://bsc-dataseed.binance.org/',
     'rsk_testnet': 'https://testnet2.sovryn.app/rpc',
     'bsc_testnet': 'https://data-seed-prebsc-1-s1.binance.org:8545/',
@@ -101,17 +102,33 @@ def get_events(
     while batch_from_block <= to_block:
         batch_to_block = min(batch_from_block + batch_size, to_block)
         logger.info('fetching batch from %s to %s (up to %s)', batch_from_block, batch_to_block, to_block)
-        event_filter = event.createFilter(
-            fromBlock=batch_from_block,
-            toBlock=batch_to_block,
+
+        events = get_event_batch_with_retries(
+            event=event,
+            from_block=batch_from_block,
+            to_block=batch_to_block,
         )
-        events = event_filter.get_all_entries()
         if len(events) > 0:
             logger.info(f'found %s events in batch', len(events))
         ret.extend(events)
         batch_from_block = batch_to_block + 1
     logger.info(f'found %s events in total', len(ret))
     return ret
+
+
+def get_event_batch_with_retries(event, from_block, to_block, *, retries=3):
+    while True:
+        event_filter = event.createFilter(
+            fromBlock=from_block,
+            toBlock=to_block,
+        )
+        try:
+            return event_filter.get_all_entries()
+        except ValueError as e:
+            if retries <= 0:
+                raise e
+            logger.warning('error in get_all_entries: %s, retrying (%s)', e, retries)
+            retries -= 1
 
 
 def exponential_sleep(attempt, max_sleep_time=256.0):
