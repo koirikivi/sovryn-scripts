@@ -6,12 +6,14 @@ import os
 import sys
 from datetime import datetime, timezone
 from time import sleep
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
+from eth_account.signers.local import LocalAccount
 from eth_typing import AnyAddress
 from eth_utils import to_checksum_address
 from web3 import Web3
 from web3.contract import Contract, ContractEvent
+from web3.middleware import construct_sign_and_send_raw_middleware
 
 THIS_DIR = os.path.dirname(__file__)
 ABI_DIR = os.path.join(THIS_DIR, 'abi')
@@ -29,7 +31,7 @@ RPC_URLS = {
 }
 
 
-def get_web3(chain_name: str) -> Web3:
+def get_web3(chain_name: str, *, account: Optional[LocalAccount] = None) -> Web3:
     try:
         rpc_url = RPC_URLS[chain_name]
     except KeyError:
@@ -37,7 +39,19 @@ def get_web3(chain_name: str) -> Web3:
         raise LookupError(f'Invalid chain name: {chain_name!r}. Valid options: {valid_chains}')
     if 'INFURA_API_KEY_NOT_SET' in rpc_url:
         raise RuntimeError('please provide the enviroment var INFURA_API_KEY')
-    return Web3(Web3.HTTPProvider(rpc_url))
+    web3 = Web3(Web3.HTTPProvider(rpc_url))
+    if account:
+        set_web3_account(
+            web3=web3,
+            account=account,
+        )
+    return web3
+
+
+def set_web3_account(*, web3: Web3, account: LocalAccount) -> Web3:
+    web3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
+    web3.eth.default_account = account.address
+    return web3
 
 
 def enable_logging():
