@@ -5,6 +5,7 @@ from typing import Callable, Iterable, Optional, TypeVar
 from eth_account import Account
 from eth_utils import is_hex, to_hex
 from web3.logs import DISCARD
+from web3.middleware import geth_poa_middleware
 
 from constants import BRIDGES, BRIDGE_ABI, FEDERATION_ABI
 from utils import get_web3, set_web3_account, to_address
@@ -69,7 +70,9 @@ def main():
     print("Federation address:", bridge_address, f'({side_chain_name})')
 
     web3 = get_web3(bridge_config['chain'])
+    web3.middleware_onion.inject(geth_poa_middleware, layer=0)  # TODO: is this really required?
     side_web3 = get_web3(side_bridge_config['chain'])
+    side_web3.middleware_onion.inject(geth_poa_middleware, layer=0)  # TODO: is this really required?
     bridge_contract = web3.eth.contract(
         address=to_address(bridge_address),
         abi=BRIDGE_ABI,
