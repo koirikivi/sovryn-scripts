@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 INFURA_API_KEY = os.environ.get('INFURA_API_KEY', 'INFURA_API_KEY_NOT_SET')
 RPC_URLS = {
-    'rsk_mainnet': 'https://mainnet2.sovryn.app/rpc',
+    'rsk_mainnet': 'https://mainnet.sovryn.app/rpc',
     'rsk_mainnet_iov': 'https://public-node.rsk.co',
     'bsc_mainnet': 'https://bsc-dataseed.binance.org/',
     'rsk_testnet': 'https://testnet2.sovryn.app/rpc',
@@ -132,12 +132,11 @@ def get_events(
 
 def get_event_batch_with_retries(event, from_block, to_block, *, retries=3):
     while True:
-        event_filter = event.createFilter(
-            fromBlock=from_block,
-            toBlock=to_block,
-        )
         try:
-            return event_filter.get_all_entries()
+            return event.getLogs(
+                fromBlock=from_block,
+                toBlock=to_block,
+            )
         except ValueError as e:
             if retries <= 0:
                 raise e
