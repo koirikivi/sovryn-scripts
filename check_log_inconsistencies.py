@@ -88,7 +88,10 @@ class JSONRPCClient:
         )
         with request.urlopen(req) as f:
             data = json.load(f)
-        return data['result']
+        try:
+            return data['result']
+        except KeyError as e:
+            raise Exception(f'Invalid JSONRPC response: {data!r}') from e
 
     def get_logs(self, from_block: int, to_block: int) -> List[Dict[str, Any]]:
         response = self.jsonrpc_request(
