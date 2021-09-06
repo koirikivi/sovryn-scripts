@@ -18,6 +18,7 @@ class Transfer:
     from_chain: str
     to_chain: str
     transaction_id: str
+    transaction_id_old: str
     was_processed: bool
     num_votes: int
     receiver_address: str
@@ -145,7 +146,7 @@ def fetch_state(main_bridge_config, side_bridge_config, *,
     transfers = []
     for event in cross_events:
         args = event.args
-        vote_transaction_args = (
+        tx_id_args_old = (
             args['_tokenAddress'],
             args['_to'],
             args['_amount'],
@@ -156,10 +157,16 @@ def fetch_state(main_bridge_config, side_bridge_config, *,
             args['_decimals'],
             args['_granularity'],
         )
+        tx_id_args = tx_id_args_old + (
+            args['_userData'],
+        )
         print(event)
-        transaction_id = federation_contract.functions.getTransactionId(*vote_transaction_args).call()
+        transaction_id = federation_contract.functions.getTransactionIdU(*tx_id_args).call()
         transaction_id = to_hex(transaction_id)
         print('transaction_id', transaction_id)
+        transaction_id_old = federation_contract.functions.getTransactionId(*tx_id_args_old).call()
+        transaction_id_old = to_hex(transaction_id_old)
+        print('transaction_id_old', transaction_id_old)
         num_votes = federation_contract.functions.getTransactionCount(transaction_id).call()
         print('num_votes', num_votes)
         was_processed = federation_contract.functions.transactionWasProcessed(transaction_id).call()
@@ -179,6 +186,7 @@ def fetch_state(main_bridge_config, side_bridge_config, *,
             from_chain=main_chain,
             to_chain=side_chain,
             transaction_id=transaction_id,
+            transaction_id_old=transaction_id_old,
             num_votes=num_votes,
             was_processed=was_processed,
             token_symbol=args['_symbol'],

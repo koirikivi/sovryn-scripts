@@ -136,16 +136,27 @@ def main():
         cross_event.args['_decimals'],
         cross_event.args['_granularity'],
     )
+    vote_transaction_args_with_userdata = vote_transaction_args + (
+        cross_event.args['_userData'],
+    )
     transaction_id = federation_contract.functions.getTransactionId(*vote_transaction_args).call()
     transaction_id = to_hex(transaction_id)
     print(f"transactionId: {transaction_id}")
+    transaction_id_u = federation_contract.functions.getTransactionIdU(*vote_transaction_args_with_userdata).call()
+    transaction_id_u = to_hex(transaction_id_u)
+    print(f"transactionIdU: {transaction_id_u}")
+
     print("Fetching transaction data...")
     num_votes = federation_contract.functions.getTransactionCount(transaction_id).call()
+    num_votes_u = federation_contract.functions.getTransactionCount(transaction_id_u).call()
     print("Num votes:", num_votes)
+    print("Num votes (U):", num_votes_u)
     was_processed = federation_contract.functions.transactionWasProcessed(transaction_id).call()
+    was_processed_u = federation_contract.functions.transactionWasProcessed(transaction_id_u).call()
     print("Was processed:", was_processed)
+    print("Was processed (U):", was_processed_u)
 
-    if was_processed:
+    if was_processed or was_processed_u:
         print("Transaction already processed")
         return
 
@@ -169,11 +180,13 @@ def main():
     print("Is federation member:", is_member)
     has_voted = federation_contract.functions.votes(transaction_id, account.address).call()
     print("Has voted:", has_voted)
+    has_voted_u = federation_contract.functions.votes(transaction_id_u, account.address).call()
+    print("Has voted (U):", has_voted_u)
 
     if not is_member:
         print(f"Error: Account {account.address} is not a federator and cannot vote.")
         return
-    if has_voted:
+    if has_voted or has_voted_u:
         print(f"Account {account.address} has already voted for {transaction_id}.")
         return
 
