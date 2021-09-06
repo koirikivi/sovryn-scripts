@@ -5,13 +5,13 @@ BRIDGES = {
     'rsk_eth_mainnet': {
         'rsk': {
             'bridge_address': '0x1ccad820b6d031b41c54f1f3da11c0d48b399581',
-            'federation_address': '0x99896b7e917ff9c130bb86cde0d778be37e3464c',
+            'federation_address': '0x5e2ee3cd18421838d066bd1dc02fb1f767d834dd',
             'bridge_start_block': 3373266,
             'chain': 'rsk_mainnet',
         },
         'other': {
             'bridge_address': '0x33c0d33a0d4312562ad622f91d12b0ac47366ee1',
-            'federation_address': '0x2493b92b3b958c8d1e93899cae00bfc4854cbd18',
+            'federation_address': '0x74aa9b461CAd174cA066fc80AF2151c96Bd4D45f',
             'bridge_start_block': 12485023,
             'chain': 'eth_mainnet',
         }
@@ -19,13 +19,13 @@ BRIDGES = {
     'rsk_bsc_mainnet': {
         'rsk': {
             'bridge_address': '0x971b97c8cc82e7d27bc467c2dc3f219c6ee2e350',
-            'federation_address': '0xc4b5178cc086e764568adfb2daccbb0d973e8132',
+            'federation_address': '0xa7938270c2bf99a9cf033c9d35156d2ddb097b12',
             'bridge_start_block': 3399221,
             'chain': 'rsk_mainnet',
         },
         'other': {
             'bridge_address': '0xdfc7127593c8af1a17146893f10e08528f4c2aa7',
-            'federation_address': '0xfc321356bb2ca3d68fafe9515c24c9b23b63a6a6',
+            'federation_address': '0x33f8743d5afa519dd373a75e7aa5c255e2c82468',
             'bridge_start_block': 7917126,
             'chain': 'bsc_mainnet',
         }
