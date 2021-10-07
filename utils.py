@@ -31,7 +31,7 @@ RPC_URLS = {
 }
 
 
-def get_web3(chain_name: str, *, account: Optional[LocalAccount] = None) -> Web3:
+def get_web3(chain_name: str, *, account: Optional[LocalAccount] = None, provider_kwargs=None) -> Web3:
     try:
         rpc_url = RPC_URLS[chain_name]
     except KeyError:
@@ -39,7 +39,9 @@ def get_web3(chain_name: str, *, account: Optional[LocalAccount] = None) -> Web3
         raise LookupError(f'Invalid chain name: {chain_name!r}. Valid options: {valid_chains}')
     if 'INFURA_API_KEY_NOT_SET' in rpc_url:
         raise RuntimeError('please provide the enviroment var INFURA_API_KEY')
-    web3 = Web3(Web3.HTTPProvider(rpc_url))
+    if provider_kwargs is None:
+        provider_kwargs = {}
+    web3 = Web3(Web3.HTTPProvider(rpc_url, **provider_kwargs))
     if account:
         set_web3_account(
             web3=web3,

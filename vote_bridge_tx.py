@@ -29,6 +29,14 @@ def main():
     parser.add_argument('--private-key',
                         help='federator account private key',
                         default=None)
+    parser.add_argument('--gas-price',
+                        help='gas price in gwei',
+                        type=int,
+                        default=None)
+    parser.add_argument('--timeout-minutes',
+                        help='timeout in minutes for a transaction',
+                        type=int,
+                        default=10)
     args = parser.parse_args()
 
     if args.bridge:
@@ -40,6 +48,10 @@ def main():
         )
 
     side_chain_name = bridge_name.split('_')[1]
+
+    if args.gas_price is not None:
+        if args.gas_price > 2000:
+            raise ValueError("Dangerously high gas price")
 
     if args.deposit_chain:
         if args.deposit_chain == 'rsk':
@@ -69,7 +81,12 @@ def main():
     print("Bridge address:", bridge_address, f'({chain_name})')
     print("Federation address:", bridge_address, f'({side_chain_name})')
 
-    web3 = get_web3(bridge_config['chain'])
+    web3 = get_web3(
+        bridge_config['chain'],
+        provider_kwargs={
+            'request_kwargs': {'timeout': args.timeout_minutes * 60}
+        }
+    )
     web3.middleware_onion.inject(geth_poa_middleware, layer=0)  # TODO: is this really required?
     side_web3 = get_web3(side_bridge_config['chain'])
     side_web3.middleware_onion.inject(geth_poa_middleware, layer=0)  # TODO: is this really required?
@@ -197,7 +214,11 @@ def main():
         return
 
     print("Voting for transaction.")
-    vote_tx_hash = federation_contract.functions.voteTransaction(*vote_transaction_args).transact()
+    transact_opts = {}
+    if args.gas_price:
+        print("Using gas price", args.gas_price, "Gwei")
+        transact_opts["gasPrice"] = args.gas_price
+    vote_tx_hash = federation_contract.functions.voteTransaction(*vote_transaction_args).transact(transact_opts)
     vote_tx_hash = to_hex(vote_tx_hash)
     print("Vote tx:", vote_tx_hash)
     print("Waiting for receipt")
