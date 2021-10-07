@@ -44,7 +44,7 @@ def main():
     if args.deposit_chain:
         if args.deposit_chain == 'rsk':
             chain_name = 'rsk'
-        elif args.deposit_chain_name in ('other', side_chain_name):
+        elif args.deposit_chain in ('other', side_chain_name):
             chain_name = side_chain_name
         else:
             raise ValueError(f"invalid chain name: {args.deposit_chain}")
