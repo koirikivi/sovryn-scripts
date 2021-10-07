@@ -31,7 +31,7 @@ def main():
                         default=None)
     parser.add_argument('--gas-price',
                         help='gas price in gwei',
-                        type=int,
+                        type=float,
                         default=None)
     parser.add_argument('--timeout-minutes',
                         help='timeout in minutes for a transaction',
@@ -48,10 +48,6 @@ def main():
         )
 
     side_chain_name = bridge_name.split('_')[1]
-
-    if args.gas_price is not None:
-        if args.gas_price > 2000:
-            raise ValueError("Dangerously high gas price")
 
     if args.deposit_chain:
         if args.deposit_chain == 'rsk':
@@ -98,6 +94,21 @@ def main():
         address=to_address(federation_address),
         abi=FEDERATION_ABI,
     )
+
+    if args.gas_price is not None:
+        # This is the chain where the things are sent
+        # This is ugly btw...
+        if side_bridge_config['chain'].startswith('rsk'):
+            if args.gas_price > 0.25:
+                raise ValueError("Dangerously high gas price for RSK network (usually 0.06 should be enough)")
+        elif side_bridge_config['chain'].startswith('bsc'):
+            if args.gas_price > 20:
+                raise ValueError("Dangerously high gas price for BSC network (usually it's 5)")
+        # I guess 2000 gwei is high enough for all else
+        if args.gas_price > 1000:
+            raise ValueError(
+                "Dangerously high gas price for ethereum network (it's bound to be high but over 1k is too much)"
+            )
 
     if args.tx_hash:
         tx_hash = args.tx_hash
@@ -217,7 +228,7 @@ def main():
     transact_opts = {}
     if args.gas_price:
         print("Using gas price", args.gas_price, "Gwei")
-        transact_opts["gasPrice"] = args.gas_price
+        transact_opts["gasPrice"] = int(args.gas_price * 10**9)
     vote_tx_hash = federation_contract.functions.voteTransaction(*vote_transaction_args).transact(transact_opts)
     vote_tx_hash = to_hex(vote_tx_hash)
     print("Vote tx:", vote_tx_hash)
