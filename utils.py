@@ -13,7 +13,7 @@ from eth_typing import AnyAddress
 from eth_utils import to_checksum_address
 from web3 import Web3
 from web3.contract import Contract, ContractEvent
-from web3.middleware import construct_sign_and_send_raw_middleware
+from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
 
 THIS_DIR = os.path.dirname(__file__)
 ABI_DIR = os.path.join(THIS_DIR, 'abi')
@@ -22,9 +22,10 @@ logger = logging.getLogger(__name__)
 INFURA_API_KEY = os.environ.get('INFURA_API_KEY', 'INFURA_API_KEY_NOT_SET')
 RPC_URLS = {
     'rsk_mainnet': 'https://mainnet.sovryn.app/rpc',
+    'rsk_mainnet_local': 'http://localhost:4444',
     'rsk_mainnet_iov': 'https://public-node.rsk.co',
     'bsc_mainnet': 'https://bsc-dataseed.binance.org/',
-    'rsk_testnet': 'https://testnet2.sovryn.app/rpc',
+    'rsk_testnet': 'https://testnet.sovryn.app/rpc',
     'bsc_testnet': 'https://data-seed-prebsc-1-s1.binance.org:8545/',
     'eth_mainnet': f'https://mainnet.infura.io/v3/{INFURA_API_KEY}',
     'eth_testnet_ropsten': f'https://ropsten.infura.io/v3/{INFURA_API_KEY}',
@@ -47,6 +48,13 @@ def get_web3(chain_name: str, *, account: Optional[LocalAccount] = None, provide
             web3=web3,
             account=account,
         )
+
+    # Fix this (might not be necessary for all chains)
+    # web3.exceptions.ExtraDataLengthError:
+    # The field extraData is 97 bytes, but should be 32. It is quite likely that  you are connected to a POA chain.
+    # Refer to http://web3py.readthedocs.io/en/stable/middleware.html#geth-style-proof-of-authority for more details.
+    web3.middleware_onion.inject(geth_poa_middleware, layer=0)
+
     return web3
 
 
@@ -106,7 +114,8 @@ def get_events(
     event: ContractEvent,
     from_block: int,
     to_block: int,
-    batch_size: int = 100
+    batch_size: int = 100,
+    argument_filters = None
 ):
     """Load events in batches"""
     if to_block < from_block:
@@ -123,6 +132,7 @@ def get_events(
             event=event,
             from_block=batch_from_block,
             to_block=batch_to_block,
+            argument_filters=argument_filters,
         )
         if len(events) > 0:
             logger.info(f'found %s events in batch', len(events))
@@ -132,12 +142,13 @@ def get_events(
     return ret
 
 
-def get_event_batch_with_retries(event, from_block, to_block, *, retries=3):
+def get_event_batch_with_retries(event, from_block, to_block, *, argument_filters=None, retries=3):
     while True:
         try:
             return event.getLogs(
                 fromBlock=from_block,
                 toBlock=to_block,
+                argument_filters=argument_filters
             )
         except ValueError as e:
             if retries <= 0:

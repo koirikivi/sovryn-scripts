@@ -47,13 +47,15 @@ BRIDGES = {
     'rsk_bsc_testnet': {
         'rsk': {
             'bridge_address': '0x2b2bcad081fa773dc655361d1bb30577caa556f8',
-            'federation_address': '0x92f791b72842f479888aefba975eff2ed74700b7',
+            #'federation_address': '0x92f791b72842f479888aefba975eff2ed74700b7',
+            'federation_address': '0x07081144a97b58f08AB8bAaf8b05D87f5d31e5dF',
             'bridge_start_block': 1884421,
             'chain': 'rsk_testnet',
         },
         'other': {
             'bridge_address': '0x862e8aff917319594cc7faaae5350d21196c086f',
-            'federation_address': '0x2b456e230225c4670fbf10b9da506c019a24cac7',
+            #'federation_address': '0x2b456e230225c4670fbf10b9da506c019a24cac7',
+            'federation_address': '0x6E28bB6dbBAc8bBC11F5780E39f9Aca9F9737182',
             'bridge_start_block': 9290364,
             'chain': 'bsc_testnet',
         }
