@@ -203,9 +203,9 @@ elif command == 'accept_transfers':
         print("No transfers to accept")
     for i, args in enumerate(acceptable_transfers, start=1):
         print(
-            "Accepting event #{i} with args:", *args
+            f"Accepting event #{i} with args:", args
         )
-        tx = fastbtc_inbox.functions.acceptTokenBridgeTransfer(args).transact()
+        tx = fastbtc_inbox.functions.acceptTokenBridgeTransfer(*args).transact()
         print("Done, tx:", to_hex(tx), "waiting for receipt")
         rsk_web3.eth.wait_for_transaction_receipt(tx)
 
@@ -389,7 +389,7 @@ elif command == "get_transfer_history":
             net_amount_satoshi=event.args.amountSatoshi,
             fee_satoshi=event.args.feeSatoshi,
             is_bridge_transfer=event.args.transferId in actual_rsk_addresses_by_transfer_id,
-            status=statuses_by_transfer_id[event.args.transferId],
+            status=statuses_by_transfer_id.get(event.args.transferId, TransferStatus.NEW),
             bitcoin_tx_id=bitcoin_tx_id,
         )
         transfers.append(transfer)
