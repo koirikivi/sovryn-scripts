@@ -1,7 +1,11 @@
+import dataclasses
+import enum
 import os
 import sys
 import time
+from collections import defaultdict
 from pprint import pprint
+from typing import Optional
 
 from eth_account import Account
 from eth_utils import to_hex
@@ -276,6 +280,123 @@ elif command == 'accept_bridge_transfer':
     ).transact()
     print("Done, tx:", to_hex(tx), "waiting for receipt")
     rsk_web3.eth.wait_for_transaction_receipt(tx)
+elif command == "get_transfer_history":
+    from_block = 2326996
+    to_block = rsk_web3.eth.get_block_number()
+    user_address = ''
+    try:
+        user_address = sys.argv[2]
+        print("Showing transfers from user", user_address)
+    except IndexError:
+        print("Showing transfers from all users")
+
+    class TransferStatus(enum.IntEnum):
+        NOT_APPLICABLE = 0
+        NEW = 1
+        SENDING = 2
+        MINED = 3
+        REFUNDED = 4
+
+    @dataclasses.dataclass()
+    class BitcoinTransfer:
+        transfer_id: str
+        rsk_address: str
+        bitcoin_address: str
+        total_amount_satoshi: int
+        net_amount_satoshi: int
+        fee_satoshi: int
+        is_bridge_transfer: bool
+        status: TransferStatus
+        bitcoin_tx_id: Optional[str] = None
+
+
+    # TODO: this can be optimized at least by reducing the amount of calls needed,
+    # and by utilizing filters better
+    new_bitcoin_transfer_events = get_events(
+        event=fastbtc_bridge.events.NewBitcoinTransfer(),
+        from_block=from_block,
+        to_block=to_block,
+        batch_size=10_000,
+        # Cannot filter by rskAddress if we take FastBTCInbox NewTokenBridgeBitcoinTransfer events into account
+        #argument_filters=dict(
+        #    rskAddress=user_address,
+        #) if user_address else None
+    )
+    print("Found", len(new_bitcoin_transfer_events), "NewBitcoinTransfer events")
+
+    new_token_bridge_bitcoin_transfer_events = get_events(
+        event=fastbtc_inbox.events.NewTokenBridgeBitcoinTransfer(),
+        from_block=from_block,
+        to_block=to_block,
+        batch_size=10_000,
+        argument_filters=dict(
+            rskAddress=user_address,
+        ) if user_address else None
+    )
+    print("Found", len(new_bitcoin_transfer_events), "NewTokenBridgeBitcoinTransfer events")
+
+    bitcoin_transfer_batch_sending_events = get_events(
+        event=fastbtc_bridge.events.BitcoinTransferBatchSending(),
+        from_block=from_block,
+        to_block=to_block,
+        batch_size=10_000,
+    )
+    print("Found", len(bitcoin_transfer_batch_sending_events), "BitcoinTransferBatchSending events")
+
+    bitcoin_transfer_status_updated_events = get_events(
+        event=fastbtc_bridge.events.BitcoinTransferStatusUpdated(),
+        from_block=from_block,
+        to_block=to_block,
+        batch_size=10_000,
+    )
+    print("Found", len(bitcoin_transfer_batch_sending_events), "BitcoinTransferStatusUpdated events")
+
+    transfer_batch_sending_events_by_tx_hash = defaultdict(list)
+    for event in bitcoin_transfer_batch_sending_events:
+        # Add a reference to this event for each event in the transferBatchSize,
+        # to make processing easier
+        transfer_batch_sending_events_by_tx_hash[event.transactionHash].extend(
+            [event] * event.args.transferBatchSize
+        )
+
+    bitcoin_tx_ids_by_transfer_id = dict()
+    statuses_by_transfer_id = dict()
+    actual_rsk_addresses_by_transfer_id = dict()
+
+    for event in new_token_bridge_bitcoin_transfer_events:
+        actual_rsk_addresses_by_transfer_id[event.args.transferId] = event.args.rskAddress
+
+    for event in bitcoin_transfer_status_updated_events:
+        status = TransferStatus(event.args.newStatus)
+        statuses_by_transfer_id[event.args.transferId] = status
+        if status == TransferStatus.SENDING:
+            sending_event = transfer_batch_sending_events_by_tx_hash[event.transactionHash].pop(0)
+            bitcoin_tx_ids_by_transfer_id[event.args.transferId] = sending_event.args.bitcoinTxHash
+
+    transfers = []
+    for event in new_bitcoin_transfer_events:
+        bitcoin_tx_id = bitcoin_tx_ids_by_transfer_id.get(event.args.transferId)
+        if bitcoin_tx_id:
+            bitcoin_tx_id = to_hex(bitcoin_tx_id)[2:]
+        rsk_address = actual_rsk_addresses_by_transfer_id.get(event.args.transferId, event.args.rskAddress)
+        if user_address and rsk_address.lower() != user_address.lower():
+            continue
+        transfer = BitcoinTransfer(
+            transfer_id=to_hex(event.args.transferId),
+            rsk_address=rsk_address,
+            bitcoin_address=event.args.btcAddress,
+            total_amount_satoshi=event.args.amountSatoshi + event.args.feeSatoshi,
+            net_amount_satoshi=event.args.amountSatoshi,
+            fee_satoshi=event.args.feeSatoshi,
+            is_bridge_transfer=event.args.transferId in actual_rsk_addresses_by_transfer_id,
+            status=statuses_by_transfer_id[event.args.transferId],
+            bitcoin_tx_id=bitcoin_tx_id,
+        )
+        transfers.append(transfer)
+
+    for transfer in transfers:
+        print(transfer)
+
 elif command == "set_wrbtc_address":
     admin_account_private_key = os.getenv('ADMIN_PRIVATE_KEY')
     if not admin_account_private_key:
