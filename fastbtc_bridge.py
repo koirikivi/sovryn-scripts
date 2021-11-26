@@ -5,6 +5,7 @@ from pprint import pprint
 
 from eth_account import Account
 from eth_utils import to_hex
+from eth_abi import encode_abi
 from web3.logs import DISCARD
 
 from utils import get_erc20_contract, get_events, get_web3, load_abi, set_web3_account, to_address, enable_logging
@@ -32,8 +33,10 @@ bsc_btcs_aggregator_address = '0xe2C2fbAa4407fa8BB0Dbb7a6a32aD36f8bA484aE'
 bsc_btcs_token_address = "0x0ed2a1edde92b25448db95e5aa9fe9e9bc0193bf"
 bsc_brbtc_token_address = to_address("0xc41d41cb7a31c80662ac2d8ab7a7e5f5841eebc3")
 
-transfer_amount_wei = 20000000000000
+bsc_to_btc_transfer_amount_wei = 20000000000000
 bitcoin_address = "tb1qls9xn6hjvjtnj3exw0nwqee894qfx2kp6hvm32"
+
+rsk_to_bsc_transfer_amount_wei = 200000000000000
 
 bsc_web3 = get_web3('bsc_testnet', account=test_account)
 rsk_web3 = get_web3('rsk_testnet', account=test_account)
@@ -61,7 +64,7 @@ rsk_allowtokens = rsk_web3.eth.contract(
 transfer_fee = rsk_allowtokens.functions.getFeePerToken(rsk_rbtc_wrapper_address).call()
 print("Fee:", transfer_fee)
 min_per_token = rsk_allowtokens.functions.getMinPerToken(rsk_rbtc_wrapper_address).call()
-print("Fee:", transfer_fee)
+print("Min per token:", min_per_token)
 
 fastbtc_inbox = rsk_web3.eth.contract(
     address=to_address(fastbtc_inbox_address),
@@ -71,16 +74,6 @@ fastbtc_bridge = rsk_web3.eth.contract(
     address=to_address(fastbtc_bridge_address),
     abi=load_abi('bidirectional-fastbtc/FastBTCBridge'),
 )
-min_transfer_satoshi = fastbtc_bridge.functions.minTransferSatoshi().call()
-satoshi_divisor = fastbtc_bridge.functions.SATOSHI_DIVISOR().call()
-min_transfer_wei = min_transfer_satoshi * satoshi_divisor
-if transfer_amount_wei - transfer_fee < min_transfer_wei:
-    raise ValueError(
-        f"transfer amount {min_transfer_wei} minus fee {transfer_fee} "
-        f"({min_transfer_wei - transfer_fee}) is less than min amount {min_transfer_wei}"
-    )
-print("Min transfer:", min_transfer_satoshi, "satoshi,", min_transfer_wei, "wei")
-
 inbox_wrbtc_address = fastbtc_inbox.functions.wrbtcToken().call()
 print("Inbox WRBTC   ", inbox_wrbtc_address)
 print("Expected WRBTC", rsk_rbtc_wrapper_address)
@@ -98,16 +91,26 @@ bsc_btcs = get_erc20_contract(
     token_address=to_address(bsc_btcs_token_address),
     web3=bsc_web3
 )
-print("BTCs balance   ", bsc_btcs.functions.balanceOf(test_account.address).call())
-print("Transfer amount", transfer_amount_wei)
-
 print("rsk address    ", test_account.address)
 print("bitcoin address", bitcoin_address)
 user_data = fastbtc_inbox.functions.encodeUserData(test_account.address, bitcoin_address).call()
 print("User data      ", to_hex(user_data))
 
-if command == 'transfer_bsc_to_btc':
-    if bsc_btcs.functions.allowance(test_account.address, bsc_btcs_aggregator_address).call() < transfer_amount_wei:
+if command == 'transfer_from_bsc_to_btc':
+    min_transfer_satoshi = fastbtc_bridge.functions.minTransferSatoshi().call()
+    satoshi_divisor = fastbtc_bridge.functions.SATOSHI_DIVISOR().call()
+    min_transfer_wei = min_transfer_satoshi * satoshi_divisor
+    if bsc_to_btc_transfer_amount_wei - transfer_fee < min_transfer_wei:
+        raise ValueError(
+            f"transfer amount {min_transfer_wei} minus fee {transfer_fee} "
+            f"({min_transfer_wei - transfer_fee}) is less than min amount {min_transfer_wei}"
+        )
+    print("Min transfer:", min_transfer_satoshi, "satoshi,", min_transfer_wei, "wei")
+
+    print("BTCs balance   ", bsc_btcs.functions.balanceOf(test_account.address).call())
+    print("Transfer amount", bsc_to_btc_transfer_amount_wei)
+
+    if bsc_btcs.functions.allowance(test_account.address, bsc_btcs_aggregator_address).call() < bsc_to_btc_transfer_amount_wei:
         print("Setting allowance")
         tx = bsc_btcs.functions.approve(bsc_btcs_aggregator_address, 2**256 - 1).transact()
         print("Done, tx:", to_hex(tx), "waiting for receipt")
@@ -119,13 +122,34 @@ if command == 'transfer_bsc_to_btc':
     #"0xc41d41cb7a31c80662ac2d8ab7a7e5f5841eebc3","20000000000000","0x18a2EF981110C23Cf1a58065EfA41b27AD963980","0x000000000000000000000000a7a7a7"
     tx = bsc_aggregator.functions.redeemToBridge(
         bsc_brbtc_token_address,
-        transfer_amount_wei,
+        bsc_to_btc_transfer_amount_wei,
         fastbtc_inbox_address,
         #test_account.address,
         user_data,
     ).transact()
     print("Done, tx:", to_hex(tx), "waiting for receipt")
     bsc_web3.eth.wait_for_transaction_receipt(tx)
+elif command == 'transfer_from_rsk_to_bsc':
+    print("RBTC balance (RSK)          ", rsk_web3.eth.get_balance(test_account.address))
+    print("BTCs balance (BSC)          ", bsc_btcs.functions.balanceOf(test_account.address).call())
+    print("Transfer amount (RSK to BSC)", rsk_to_bsc_transfer_amount_wei)
+
+    encoded_address = encode_abi(['address'], [test_account.address])
+    print("Address:        ", test_account.address)
+    print("Encoded address:", to_hex(encoded_address))
+
+    print("Transferring RBTC through RSK bridge to BSC in 3s...")
+    time.sleep(3)
+
+    tx = rsk_bridge.functions.receiveEthAt(
+        bsc_btcs_aggregator_address,
+        encoded_address
+    ).transact({
+        "value": rsk_to_bsc_transfer_amount_wei
+    })
+    print("Done, tx:", to_hex(tx), "waiting for receipt")
+    rsk_web3.eth.wait_for_transaction_receipt(tx)
+
 elif command == 'accept_transfers':
     to_block = rsk_web3.eth.get_block_number()
     inbox_received_events = get_events(
