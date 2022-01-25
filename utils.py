@@ -21,13 +21,13 @@ logger = logging.getLogger(__name__)
 
 INFURA_API_KEY = os.environ.get('INFURA_API_KEY', 'INFURA_API_KEY_NOT_SET')
 RPC_URLS = {
-    'rsk_mainnet': 'https://mainnet.sovryn.app/rpc',
+    'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://mainnet.sovryn.app/rpc'),
     'rsk_mainnet_local': 'http://localhost:4444',
     'rsk_mainnet_iov': 'https://public-node.rsk.co',
-    'bsc_mainnet': 'https://bsc-dataseed.binance.org/',
+    'bsc_mainnet': os.getenv('BSC_NODE_URL', 'https://bsc-dataseed.binance.org/'),
     'rsk_testnet': 'https://testnet.sovryn.app/rpc',
     'bsc_testnet': 'https://data-seed-prebsc-1-s1.binance.org:8545/',
-    'eth_mainnet': f'https://mainnet.infura.io/v3/{INFURA_API_KEY}',
+    'eth_mainnet': os.getenv('ETH_NODE_URL', f'https://mainnet.infura.io/v3/{INFURA_API_KEY}'),
     'eth_testnet_ropsten': f'https://ropsten.infura.io/v3/{INFURA_API_KEY}',
 }
 
@@ -142,7 +142,7 @@ def get_events(
     return ret
 
 
-def get_event_batch_with_retries(event, from_block, to_block, *, argument_filters=None, retries=3):
+def get_event_batch_with_retries(event, from_block, to_block, *, argument_filters=None, retries=10):
     while True:
         try:
             return event.getLogs(
@@ -150,7 +150,7 @@ def get_event_batch_with_retries(event, from_block, to_block, *, argument_filter
                 toBlock=to_block,
                 argument_filters=argument_filters
             )
-        except ValueError as e:
+        except Exception as e:
             if retries <= 0:
                 raise e
             logger.warning('error in get_all_entries: %s, retrying (%s)', e, retries)
@@ -187,6 +187,7 @@ def retryable(*, max_attempts: int = 10):
 
 
 @functools.lru_cache()
+@retryable()
 def is_contract(*, web3: Web3, address: str) -> bool:
     code = web3.eth.get_code(to_address(address))
-    return code != b'\x00'
+    return code != b'\x00' and code != b''
