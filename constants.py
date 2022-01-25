@@ -1,6 +1,7 @@
-from utils import load_abi
+from utils import load_abi, to_address
 
 
+SOVRYN_PROTOCOL_ADDRESS = to_address('0x5a0d867e0d70fcc6ade25c3f1b89d618b5b4eaa7')
 BRIDGES = {
     'rsk_eth_mainnet': {
         'rsk': {
