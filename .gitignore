@@ -3,3 +3,7 @@ venv/
 __pycache__/
 *.py[co]
 .pytest-cache/
+fastbtc_base_config.json
+.ipynb_checkpoints/
+tmp/
+bridge_federators.json

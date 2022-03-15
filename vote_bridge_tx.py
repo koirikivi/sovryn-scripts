@@ -1,16 +1,25 @@
 from argparse import ArgumentParser
 from getpass import getpass
+import json
+import os
 from typing import Callable, Iterable, Optional, TypeVar
 
 from eth_account import Account
 from eth_utils import is_hex, to_hex
 from web3.logs import DISCARD
-from web3.middleware import geth_poa_middleware
 
 from constants import BRIDGES, BRIDGE_ABI, FEDERATION_ABI
 from utils import get_web3, set_web3_account, to_address
 
 T = TypeVar('T')
+
+FEDERATORS_JSON_PATH = os.path.join(os.path.dirname(__file__), 'bridge_federators.json')
+if os.path.exists(FEDERATORS_JSON_PATH):
+    with open(FEDERATORS_JSON_PATH, 'r') as f:
+        FEDERATORS_BY_BRIDGE = json.load(f)
+else:
+    print(f"{FEDERATORS_JSON_PATH} not found, not showing debug info of federators")
+    FEDERATORS_BY_BRIDGE = {}
 
 
 def main():
@@ -83,9 +92,7 @@ def main():
             'request_kwargs': {'timeout': args.timeout_minutes * 60}
         }
     )
-    web3.middleware_onion.inject(geth_poa_middleware, layer=0)  # TODO: is this really required?
     side_web3 = get_web3(side_bridge_config['chain'])
-    side_web3.middleware_onion.inject(geth_poa_middleware, layer=0)  # TODO: is this really required?
     bridge_contract = web3.eth.contract(
         address=to_address(bridge_address),
         abi=BRIDGE_ABI,
@@ -183,6 +190,11 @@ def main():
     was_processed_u = federation_contract.functions.transactionWasProcessed(transaction_id_u).call()
     print("Was processed:", was_processed)
     print("Was processed (U):", was_processed_u)
+
+    federators = FEDERATORS_BY_BRIDGE.get(bridge_name, [])
+    for address, name in federators:
+        address_has_voted = federation_contract.functions.votes(transaction_id_u, to_address(address)).call()
+        print('has', address, name, 'voted?', address_has_voted)
 
     if was_processed or was_processed_u:
         print("Transaction already processed")
