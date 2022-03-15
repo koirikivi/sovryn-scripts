@@ -134,31 +134,8 @@
         "type": "address"
       },
       {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      },
-      {
         "internalType": "address",
         "name": "receiver",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes",
-        "name": "extraData",
-        "type": "bytes"
-      }
-    ],
-    "name": "withdrawToBridge",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address payable",
-        "name": "bridge",
         "type": "address"
       },
       {
@@ -167,17 +144,12 @@
         "type": "uint256"
       },
       {
-        "internalType": "address",
-        "name": "receiver",
-        "type": "address"
-      },
-      {
         "internalType": "bytes",
         "name": "extraData",
         "type": "bytes"
       }
     ],
-    "name": "withdrawToBridgeAdmin",
+    "name": "transferToBridge",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
