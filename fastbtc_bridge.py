@@ -26,21 +26,30 @@ test_account_private_key = os.environ['TEST_ACCOUNT_PRIVATE_KEY']
 test_account = Account.from_key(test_account_private_key)
 
 fastbtc_inbox_address = "0x745a3629D7AFCf53caf96b6350105F16bA2350Bf"
-fastbtc_bridge_address = "0x53b202E87Eb5F60a9779c4Dcae14c1037D2C0422"
+#fastbtc_bridge_address = "0x53b202E87Eb5F60a9779c4Dcae14c1037D2C0422"  # old fastbtc
+#fastbtc_bridge_deploy_block = 2326996
+fastbtc_bridge_address = "0x10C848e9495a32acA95F6c23C92eCA2b2bE9903A"  # new fastbtc
+fastbtc_bridge_deploy_block = 2417524
+
 rsk_allow_tokens_address = '0xa9f2ccb27fe01479a1f21f3a236989c614f801bc'
 #rsk_wrbtc_token_address = to_address('0x69fe5cec81d5ef92600c1a0db1f11986ab3758ab')
 rsk_rbtc_wrapper_address = to_address('0xf629e5c7527ac7bc9ce26bdd6d66f0eb955ef3b2')
 rsk_bridge_address = to_address('0x2b2bcad081fa773dc655361d1bb30577caa556f8')
 rsk_federation_address = to_address('0x07081144a97b58f08AB8bAaf8b05D87f5d31e5dF')
+rsk_old_managed_wallet_address = to_address('0xcC099752238b1932587bf5793Afeb7d80D04F6e1')
+rsk_new_managed_wallet_address = to_address('0x8dC7B212692b3E36aF7E8202F06516d0dB3Bf1B6')
 
 bsc_btcs_aggregator_address = '0xe2C2fbAa4407fa8BB0Dbb7a6a32aD36f8bA484aE'
 bsc_btcs_token_address = "0x0ed2a1edde92b25448db95e5aa9fe9e9bc0193bf"
 bsc_brbtc_token_address = to_address("0xc41d41cb7a31c80662ac2d8ab7a7e5f5841eebc3")
 
 bsc_to_btc_transfer_amount_wei = 20000000000000
-bitcoin_address = "tb1qls9xn6hjvjtnj3exw0nwqee894qfx2kp6hvm32"
+#bitcoin_address = "tb1qls9xn6hjvjtnj3exw0nwqee894qfx2kp6hvm32"  # old
+#bitcoin_address = "tb1qlzy4feg900aklfahrcchuufxul6wf06d3mg97s"  # new
+bitcoin_address = "mxYAM6oLjjEMesiL5A3EMU6iDMd8kyQdfR"
 
 rsk_to_bsc_transfer_amount_wei = 200000000000000
+rsk_to_bsc_transfer_amount_dec = '0.000200000000000000'
 
 bsc_web3 = get_web3('bsc_testnet', account=test_account)
 rsk_web3 = get_web3('rsk_testnet', account=test_account)
@@ -105,7 +114,8 @@ if command == 'transfer_from_bsc_to_btc':
     print("BTCs balance   ", bsc_btcs.functions.balanceOf(test_account.address).call())
     print("Transfer amount", bsc_to_btc_transfer_amount_wei)
 
-    user_data = fastbtc_inbox.functions.encodeUserData(test_account.address, bitcoin_address).call()
+    #user_data = fastbtc_inbox.functions.encodeUserData(test_account.address, bitcoin_address).call()
+    user_data = fastbtc_bridge.functions.encodeBridgeUserData(test_account.address, bitcoin_address).call()
     print("User data      ", to_hex(user_data))
 
     if bsc_btcs.functions.allowance(test_account.address, bsc_btcs_aggregator_address).call() < bsc_to_btc_transfer_amount_wei:
@@ -121,7 +131,8 @@ if command == 'transfer_from_bsc_to_btc':
     tx = bsc_aggregator.functions.redeemToBridge(
         bsc_brbtc_token_address,
         bsc_to_btc_transfer_amount_wei,
-        fastbtc_inbox_address,
+        #fastbtc_inbox_address,
+        fastbtc_bridge_address,
         #test_account.address,
         user_data,
     ).transact()
@@ -149,6 +160,7 @@ elif command == 'transfer_from_rsk_to_bsc':
     rsk_web3.eth.wait_for_transaction_receipt(tx)
 
 elif command == 'accept_transfers':
+    # TODO: no longer in use
     to_block = rsk_web3.eth.get_block_number()
     inbox_received_events = get_events(
        event=fastbtc_inbox.events.Received(),
@@ -281,7 +293,7 @@ elif command == 'accept_bridge_transfer':
     print("Done, tx:", to_hex(tx), "waiting for receipt")
     rsk_web3.eth.wait_for_transaction_receipt(tx)
 elif command == "get_transfer_history":
-    from_block = 2326996
+    from_block = fastbtc_bridge_deploy_block
     to_block = rsk_web3.eth.get_block_number()
     user_address = ''
     try:
@@ -305,7 +317,7 @@ elif command == "get_transfer_history":
         total_amount_satoshi: int
         net_amount_satoshi: int
         fee_satoshi: int
-        is_bridge_transfer: bool
+        #is_bridge_transfer: bool
         status: TransferStatus
         bitcoin_tx_id: Optional[str] = None
 
@@ -318,22 +330,22 @@ elif command == "get_transfer_history":
         to_block=to_block,
         batch_size=10_000,
         # Cannot filter by rskAddress if we take FastBTCInbox NewTokenBridgeBitcoinTransfer events into account
-        #argument_filters=dict(
-        #    rskAddress=user_address,
-        #) if user_address else None
-    )
-    print("Found", len(new_bitcoin_transfer_events), "NewBitcoinTransfer events")
-
-    new_token_bridge_bitcoin_transfer_events = get_events(
-        event=fastbtc_inbox.events.NewTokenBridgeBitcoinTransfer(),
-        from_block=from_block,
-        to_block=to_block,
-        batch_size=10_000,
         argument_filters=dict(
             rskAddress=user_address,
         ) if user_address else None
     )
-    print("Found", len(new_bitcoin_transfer_events), "NewTokenBridgeBitcoinTransfer events")
+    print("Found", len(new_bitcoin_transfer_events), "NewBitcoinTransfer events")
+
+    #new_token_bridge_bitcoin_transfer_events = get_events(
+    #    event=fastbtc_inbox.events.NewTokenBridgeBitcoinTransfer(),
+    #    from_block=from_block,
+    #    to_block=to_block,
+    #    batch_size=10_000,
+    #    argument_filters=dict(
+    #        rskAddress=user_address,
+    #    ) if user_address else None
+    #)
+    #print("Found", len(new_bitcoin_transfer_events), "NewTokenBridgeBitcoinTransfer events")
 
     bitcoin_transfer_batch_sending_events = get_events(
         event=fastbtc_bridge.events.BitcoinTransferBatchSending(),
@@ -361,10 +373,10 @@ elif command == "get_transfer_history":
 
     bitcoin_tx_ids_by_transfer_id = dict()
     statuses_by_transfer_id = dict()
-    actual_rsk_addresses_by_transfer_id = dict()
+    #actual_rsk_addresses_by_transfer_id = dict()
 
-    for event in new_token_bridge_bitcoin_transfer_events:
-        actual_rsk_addresses_by_transfer_id[event.args.transferId] = event.args.rskAddress
+    #for event in new_token_bridge_bitcoin_transfer_events:
+    #    actual_rsk_addresses_by_transfer_id[event.args.transferId] = event.args.rskAddress
 
     for event in bitcoin_transfer_status_updated_events:
         status = TransferStatus(event.args.newStatus)
@@ -378,7 +390,9 @@ elif command == "get_transfer_history":
         bitcoin_tx_id = bitcoin_tx_ids_by_transfer_id.get(event.args.transferId)
         if bitcoin_tx_id:
             bitcoin_tx_id = to_hex(bitcoin_tx_id)[2:]
-        rsk_address = actual_rsk_addresses_by_transfer_id.get(event.args.transferId, event.args.rskAddress)
+
+        #rsk_address = actual_rsk_addresses_by_transfer_id.get(event.args.transferId, event.args.rskAddress)
+        rsk_address = event.args.rskAddress
         if user_address and rsk_address.lower() != user_address.lower():
             continue
         transfer = BitcoinTransfer(
@@ -388,7 +402,7 @@ elif command == "get_transfer_history":
             total_amount_satoshi=event.args.amountSatoshi + event.args.feeSatoshi,
             net_amount_satoshi=event.args.amountSatoshi,
             fee_satoshi=event.args.feeSatoshi,
-            is_bridge_transfer=event.args.transferId in actual_rsk_addresses_by_transfer_id,
+            #is_bridge_transfer=event.args.transferId in actual_rsk_addresses_by_transfer_id,
             status=statuses_by_transfer_id.get(event.args.transferId, TransferStatus.NEW),
             bitcoin_tx_id=bitcoin_tx_id,
         )
@@ -414,6 +428,70 @@ elif command == "set_wrbtc_address":
 
     print("Done, tx:", to_hex(tx), "waiting for receipt")
     rsk_web3.eth.wait_for_transaction_receipt(tx)
+elif command == 'check_managed_wallet':
+    old_managed_wallet = rsk_web3.eth.contract(
+        address=rsk_old_managed_wallet_address,
+        abi=load_abi('fastbtc/ManagedWallet'),
+    )
+    print("Old ManagedWallet at", rsk_old_managed_wallet_address)
+    old_admin = old_managed_wallet.functions.admin().call()
+    print("Admin:", old_admin)
+    print("Owner:", old_managed_wallet.functions.owner().call())
+    new_managed_wallet = rsk_web3.eth.contract(
+        address=rsk_new_managed_wallet_address,
+        abi=load_abi('fastbtc/ManagedWallet'),
+    )
+    print("New ManagedWallet at", rsk_new_managed_wallet_address)
+    previous_new_admin = new_managed_wallet.functions.admin().call()
+    print("Admin:", previous_new_admin)
+    print("Owner:", new_managed_wallet.functions.owner().call())
+    print("Old balance: ", rsk_web3.eth.get_balance(old_managed_wallet.address))
+    new_balance = rsk_web3.eth.get_balance(new_managed_wallet.address)
+    print("New balance: ", new_balance)
+    print("User balance:", rsk_web3.eth.get_balance(test_account.address))
+    if old_admin != previous_new_admin:
+        print("Setting new ManagedWallet admin to", old_admin, "in 3s")
+        time.sleep(3)
+        tx = new_managed_wallet.functions.changeAdmin(old_admin).transact()
+        print("Tx:", to_hex(tx))
+    goal_balance = int(0.25 * 10**18)
+    if new_balance < goal_balance / 2:
+        print("Funding the wallet in 3s")
+        time.sleep(3)
+        tx = rsk_web3.eth.send_transaction({
+            "to": rsk_new_managed_wallet_address,
+            "value": goal_balance
+        })
+        print("Tx:", to_hex(tx))
+
+elif command == 'pending_tx_fix':
+    a = rsk_web3.eth.get_transaction_count(test_account.address, block_identifier='latest')
+    print("Latest", a)
+    b = rsk_web3.eth.get_transaction_count(test_account.address, block_identifier='pending')
+    print("Pending", b)
+    goal_nonce = 22
+    nonce = a
+    while nonce <= goal_nonce:
+        tx_hash = rsk_web3.eth.send_transaction({
+            "to": test_account.address,
+            "value": bsc_to_btc_transfer_amount_wei,
+            "nonce": nonce
+        })
+        print("Nonce:", nonce, "tx", to_hex(tx_hash))
+        nonce += 1
+
+elif command == "check_bridge_receiver":
+    try:
+        _, _, address = sys.argv
+    except ValueError:
+        sys.exit(
+            "Not enough arguments given. Expected: address"
+        )
+    print(
+        f"Is {address} a bridge receiver for {rsk_bridge.address}?",
+        "Yes!" if rsk_bridge.functions.isBridgeReceiver(address).call() else "NO!"
+    )
+
 else:
     if command:
         print("Unknown command:", command)

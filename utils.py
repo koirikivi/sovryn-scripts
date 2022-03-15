@@ -14,6 +14,7 @@ from eth_utils import to_checksum_address
 from web3 import Web3
 from web3.contract import Contract, ContractEvent
 from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
+from web3.types import BlockData
 
 THIS_DIR = os.path.dirname(__file__)
 ABI_DIR = os.path.join(THIS_DIR, 'abi')
@@ -191,3 +192,55 @@ def retryable(*, max_attempts: int = 10):
 def is_contract(*, web3: Web3, address: str) -> bool:
     code = web3.eth.get_code(to_address(address))
     return code != b'\x00' and code != b''
+
+
+def get_closest_block(
+    web3: Web3,
+    wanted_datetime: datetime,
+    *,
+    not_before: bool = False
+) -> BlockData:
+    wanted_timestamp = int(wanted_datetime.timestamp())
+    logger.debug("Wanted timestamp: %s", wanted_timestamp)
+    start_block_number = 1
+    end_block_number = web3.eth.block_number
+    logger.debug("Bisecting between %s and %s", start_block_number, end_block_number)
+    closest_block = None
+    closest_diff = 2**256 - 1
+    while start_block_number <= end_block_number:
+        target_block_number = (start_block_number + end_block_number) // 2
+        block: BlockData = web3.eth.get_block(target_block_number)
+        block_timestamp = block['timestamp']
+
+        diff = block_timestamp - wanted_timestamp
+        logger.debug(
+            "target: %s, timestamp: %s, diff %s",
+            target_block_number,
+            block_timestamp,
+            diff
+        )
+
+        # Only update block when diff actually gets lower
+        # This is only necessary in the last steps of the bisect, but we might as well do it every round
+        if abs(diff) < closest_diff:
+            closest_diff = abs(diff)
+            closest_block = block
+
+        if block_timestamp > wanted_timestamp:
+            # block is after wanted, move end
+            end_block_number = block['number'] - 1
+        elif block_timestamp < wanted_timestamp:
+            # block is before wanted, move start
+            start_block_number = block['number'] + 1
+        else:
+            # timestamps are exactly the same, just return block
+            return block
+
+    if closest_block is None:
+        raise LookupError('Unable to determine block closest to ' + wanted_datetime.isoformat())
+
+    if not_before and closest_block["timestamp"] < wanted_timestamp:
+        logger.debug("Block is before wanted timestamp and not_before=True, returning next block")
+        return web3.eth.get_block(closest_block["number"] + 1)
+
+    return closest_block
