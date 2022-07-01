@@ -226,7 +226,7 @@ def main():
     if not is_member:
         print(f"Error: Account {account.address} is not a federator and cannot vote.")
         return
-    if has_voted or has_voted_u:
+    if has_voted_u:
         print(f"Account {account.address} has already voted for {transaction_id}.")
         return
 
