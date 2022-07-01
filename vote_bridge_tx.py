@@ -241,7 +241,7 @@ def main():
     if args.gas_price:
         print("Using gas price", args.gas_price, "Gwei")
         transact_opts["gasPrice"] = int(args.gas_price * 10**9)
-    vote_tx_hash = federation_contract.functions.voteTransaction(*vote_transaction_args).transact(transact_opts)
+    vote_tx_hash = federation_contract.functions.voteTransactionAt(*vote_transaction_args_with_userdata).transact(transact_opts)
     vote_tx_hash = to_hex(vote_tx_hash)
     print("Vote tx:", vote_tx_hash)
     print("Waiting for receipt")
