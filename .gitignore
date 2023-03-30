@@ -1,4 +1,6 @@
 data/
+fastbtc_in_federators.json
+
 venv/
 __pycache__/
 *.py[co]

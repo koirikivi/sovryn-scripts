@@ -17,6 +17,21 @@ pip install -r requirements.txt
 python some_script_file.py
 ```
 
+Some documented scripts
+-----------------------
+
+Show status and confirmation details of a FastBTC-in transaction:
+
+```shell
+venv/bin/python check_fastbtc_in_tx.py <tx_number>
+```
+
+Vote a stuck token bridge TX:
+
+```shell
+venv/bin/python vote_bridge_tx.py --bridge rsk_bsc_mainnet --deposit-chain rsk --tx-hash 0x123..
+````
+
 
 Use (docker)
 ------------
@@ -26,4 +41,4 @@ docker build -t sovryn_scripts .
 docker run -it sovryn_scripts -- vote_bridge_tx.py --bridge rsk_bsc_mainnet --deposit-chain rsk --tx-hash 0x123..
 ```
 
-(only `vote_bridge_tx.py` is copied to docker so far, copy the others in `Dockerfile` as needed)
+(only some scripts copied to docker so far, copy the others in `Dockerfile` as needed)
