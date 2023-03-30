@@ -1,11 +1,14 @@
 data/
+secrets/
+bridge_federators.json
+bridge_federator_ips.json
+fastbtc_base_config.json
 fastbtc_in_federators.json
+
+tmp/
 
 venv/
 __pycache__/
 *.py[co]
 .pytest-cache/
-fastbtc_base_config.json
 .ipynb_checkpoints/
-tmp/
-bridge_federators.json
