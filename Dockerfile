@@ -12,6 +12,7 @@ COPY ./abi /srv/abi
 COPY ./constants.py /srv/constants.py
 COPY ./utils.py /srv/utils.py
 COPY ./vote_bridge_tx.py /srv/vote_bridge_tx.py
+COPY ./check_fastbtc_in_tx.py /srv/check_fastbtc_in_tx.py
 
 WORKDIR /srv
 ENTRYPOINT ["python"]
