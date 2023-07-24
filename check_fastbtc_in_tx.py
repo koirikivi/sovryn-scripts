@@ -2,7 +2,7 @@ import json
 import os
 from utils import to_address, get_web3, load_abi
 
-# TO get debug output, create fastbtc_in_federators.json that looks like this
+# To get debug output, create fastbtc_in_federators.json that looks like this
 # [
 #  [ "name1", "0x1234..."],
 #  [ "name2", "0xf00ba2..."]
@@ -45,7 +45,8 @@ def show_confirmation_details(tx_number):
         print('Transaction is confirmed, no need to confirm it again')
         return
     print('SSH to your fastbtc-in node, `cd` to the `fastBTC-confirmation-node/scripts` and run')
-    print(f'```\nnodejs -r esm confirmTx mainnet {tx_number}\n# OR, if nodejs is not found:\nnode -r esm confirmTx mainnet {tx_number}\n```')
+    print(f'```\nnodejs -r esm confirmTx mainnet \'PASSWORDGOESHERE\' {tx_number}\n# OR, if nodejs is not found:\nnode -r esm confirmTx mainnet \'PASSWORDGOESHERE\' {tx_number}\n```')
+    print('(if your account is not protected by a password, you can leave out the \'PASSWORDGOESHERE\' argument)\n')
     hex_data = multisig.encodeABI('confirmTransaction', [tx_number])
     print(
         f'Or to confirm using metamask, enable hex data in the advanced settings, and then send a transaction without any value\nto `{multisig.address}`\n'
