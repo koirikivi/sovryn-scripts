@@ -1,6 +1,7 @@
 import json
 import os
 from utils import to_address, get_web3, load_abi
+from typing import NamedTuple
 
 # To get debug output, create fastbtc_in_federators.json that looks like this
 # [
@@ -15,6 +16,13 @@ if os.path.exists(FEDERATORS_JSON_PATH):
 
 
 MULTISIG_ADDRESS = to_address('0x0f279E810B95E0D425622b9B40D7Bcd0B5C4b19D')
+
+
+class MultisigTransaction(NamedTuple):
+    destination: str
+    value: int
+    data: bytes
+    executed: bool
 
 
 def show_confirmation_details(tx_number):
@@ -41,9 +49,16 @@ def show_confirmation_details(tx_number):
     print(f'Transaction id: `{tx_number}`')
     is_confirmed = multisig.functions.isConfirmed(tx_number).call()
     print('Is confirmed?: ', is_confirmed)
+    transaction = MultisigTransaction(*multisig.functions.transactions(tx_number).call())
+    print("Transaction:", transaction)
     if is_confirmed:
-        print('Transaction is confirmed, no need to confirm it again')
-        return
+        if transaction.executed:
+            print('Transaction is confirmed and executed, no need to confirm it again.')
+            return
+        else:
+            print("Transaction is confirmed but not executed!")
+            return
+
     print('SSH to your fastbtc-in node, `cd` to the `fastBTC-confirmation-node/scripts` and run')
     print(f'```\nnodejs -r esm confirmTx mainnet \'PASSWORDGOESHERE\' {tx_number}\n# OR, if nodejs is not found:\nnode -r esm confirmTx mainnet \'PASSWORDGOESHERE\' {tx_number}\n```')
     print('(if your account is not protected by a password, you can leave out the \'PASSWORDGOESHERE\' argument)\n')
