@@ -50,7 +50,16 @@ def show_confirmation_details(tx_number):
     is_confirmed = multisig.functions.isConfirmed(tx_number).call()
     print('Is confirmed?: ', is_confirmed)
     transaction = MultisigTransaction(*multisig.functions.transactions(tx_number).call())
-    print("Transaction:", transaction)
+    # print("Transaction:", transaction)
+    if (
+        transaction.destination == '0x0000000000000000000000000000000000000000' and
+        transaction.value == 0 and
+        transaction.data == b'' and
+        not transaction.executed
+    ):
+        print(f"Transaction {tx_number} doesn't exist.")
+        return
+
     if is_confirmed:
         if transaction.executed:
             print('Transaction is confirmed and executed, no need to confirm it again.')
