@@ -25,11 +25,13 @@ RPC_URLS = {
     'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://mainnet.sovryn.app/rpc'),
     'rsk_mainnet_local': 'http://localhost:4444',
     'rsk_mainnet_iov': 'https://public-node.rsk.co',
-    'bsc_mainnet': os.getenv('BSC_NODE_URL', 'https://bsc-dataseed.binance.org/'),
+    #'bsc_mainnet': os.getenv('BSC_NODE_URL', 'https://bsc.sovryn.app/mainnet'),
+    'bsc_mainnet': os.getenv('BSC_NODE_URL', 'https://bsc-dataseed4.binance.org/'),
     'rsk_testnet': 'https://testnet.sovryn.app/rpc',
-    'bsc_testnet': 'https://data-seed-prebsc-1-s1.binance.org:8545/',
-    'eth_mainnet': os.getenv('ETH_NODE_URL', f'https://mainnet.infura.io/v3/{INFURA_API_KEY}'),
+    'bsc_testnet': 'https://bsc.sovryn.app/testnet',
+    'eth_mainnet': os.getenv('ETH_NODE_URL', f'https://eth.sovryn.app/mainnet'),
     'eth_testnet_ropsten': f'https://ropsten.infura.io/v3/{INFURA_API_KEY}',
+    'eth_testnet_sepolia': f'https://sepolia.infura.io/v3/{INFURA_API_KEY}',
 }
 
 
